@@ -184,11 +184,10 @@ async def my_bookings(callback: CallbackQuery):
 
 @router.callback_query(F.data == "back_date")
 async def back_date(callback: CallbackQuery, state: FSMContext):
-    services = await db.get_services()
-    await state.set_state(BookingStates.choosing_service)
+    await state.set_state(BookingStates.choosing_date)
     await callback.message.edit_text(
-        "Выберите услугу:",
-        reply_markup=kb.services_keyboard(services)
+        "Выберите дату:",
+        reply_markup=kb.dates_keyboard()
     )
 
 @router.callback_query(F.data == "info")
