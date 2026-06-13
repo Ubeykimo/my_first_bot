@@ -241,10 +241,11 @@ async def cancel_booking(callback: CallbackQuery):
 
 @router.callback_query(F.data == "back_date")
 async def back_date(callback: CallbackQuery, state: FSMContext):
+    schedule = await db.get_schedule()
     await state.set_state(BookingStates.choosing_date)
     await callback.message.edit_text(
         "Выберите дату:",
-        reply_markup=kb.dates_keyboard()
+        reply_markup=kb.dates_keyboard(schedule)
     )
 
 @router.callback_query(F.data == "info")
