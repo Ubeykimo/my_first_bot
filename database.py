@@ -156,7 +156,7 @@ async def get_user_bookings(user_id):
             SELECT b.id, s.name, b.date, b.time, b.status
             FROM bookings b
             JOIN services s ON b.service_id = s.id
-            WHERE b.user_id = ? AND b.status != 'cancelled'
+            WHERE b.user_id = ? AND b.status NOT IN ('cancelled', 'completed')
             ORDER BY b.date, b.time
         """, (user_id,))
         return await cursor.fetchall()

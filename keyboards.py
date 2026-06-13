@@ -22,18 +22,29 @@ def services_keyboard(services):
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 # Выбор даты (7 дней вперёд)
-def dates_keyboard():
+def dates_keyboard(schedule):
     from datetime import datetime, timedelta
     buttons = []
     today = datetime.now()
-    for i in range(7):
+    
+    # Получаем доступные дни недели из расписания
+    available_days = [slot[1] for slot in schedule]
+    
+    for i in range(14):  # смотрим 2 недели вперёд
         date = today + timedelta(days=i)
+        if date.weekday() not in available_days:
+            continue  # пропускаем дни без расписания
+        
         day_str = date.strftime("%d.%m.%Y")
         day_name = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"][date.weekday()]
         buttons.append([InlineKeyboardButton(
             text=f"{day_name} {day_str}",
             callback_data=f"date_{day_str}"
         )])
+        
+        if len(buttons) >= 7:  # максимум 7 дней
+            break
+    
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="book")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
@@ -167,11 +178,11 @@ def completed_bookings_keyboard(bookings):
 def rating_keyboard(booking_id):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="⭐", callback_data=f"rate_{booking_id}_1"),
-            InlineKeyboardButton(text="⭐⭐", callback_data=f"rate_{booking_id}_2"),
-            InlineKeyboardButton(text="⭐⭐⭐", callback_data=f"rate_{booking_id}_3"),
-            InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data=f"rate_{booking_id}_4"),
-            InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data=f"rate_{booking_id}_5"),
+            InlineKeyboardButton(text="1⭐", callback_data=f"rate_{booking_id}_1"),
+            InlineKeyboardButton(text="2⭐", callback_data=f"rate_{booking_id}_2"),
+            InlineKeyboardButton(text="3⭐", callback_data=f"rate_{booking_id}_3"),
+            InlineKeyboardButton(text="4⭐", callback_data=f"rate_{booking_id}_4"),
+            InlineKeyboardButton(text="5⭐", callback_data=f"rate_{booking_id}_5"),
         ],
         [InlineKeyboardButton(text="❌ Пропустить", callback_data=f"skip_review_{booking_id}")]
     ])

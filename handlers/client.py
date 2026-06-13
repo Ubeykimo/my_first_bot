@@ -53,9 +53,15 @@ async def choose_service(callback: CallbackQuery, state: FSMContext):
         service_price=service[2]
     )
     await state.set_state(BookingStates.choosing_date)
+    
+    schedule = await db.get_schedule()
+    if not schedule:
+        await callback.answer("Расписание не настроено", show_alert=True)
+        return
+    
     await callback.message.edit_text(
         "Выберите дату:",
-        reply_markup=kb.dates_keyboard()
+        reply_markup=kb.dates_keyboard(schedule)
     )
 
 # Выбор даты
@@ -63,16 +69,21 @@ async def choose_service(callback: CallbackQuery, state: FSMContext):
 async def choose_date(callback: CallbackQuery, state: FSMContext):
     date = callback.data.split("_")[1]
     
-    # Генерируем временные слоты
+    from datetime import datetime
+    date_obj = datetime.strptime(date, "%d.%m.%Y")
+    day_of_week = date_obj.weekday()
+    
     schedule = await db.get_schedule()
-    if not schedule:
-        await callback.answer("Расписание не настроено", show_alert=True)
+    
+    # Берём расписание для этого дня недели
+    day_schedule = next((s for s in schedule if s[1] == day_of_week), None)
+    if not day_schedule:
+        await callback.answer("В этот день нет расписания", show_alert=True)
         return
     
-    # Берём первое расписание (потом можно улучшить)
-    slot = schedule[0]
-    start_time = datetime.strptime(slot[2], "%H:%M")
-    end_time = datetime.strptime(slot[3], "%H:%M")
+    from datetime import timedelta
+    start_time = datetime.strptime(day_schedule[2], "%H:%M")
+    end_time = datetime.strptime(day_schedule[3], "%H:%M")
     
     times = []
     current = start_time
