@@ -75,21 +75,17 @@ async def choose_date(callback: CallbackQuery, state: FSMContext):
     
     schedule = await db.get_schedule()
     
-    # Берём расписание для этого дня недели
-    day_schedule = next((s for s in schedule if s[1] == day_of_week), None)
-    if not day_schedule:
-        await callback.answer("В этот день нет расписания", show_alert=True)
-        return
-    
-    from datetime import timedelta
-    start_time = datetime.strptime(day_schedule[2], "%H:%M")
-    end_time = datetime.strptime(day_schedule[3], "%H:%M")
+    # Берём длительность выбранной услуги
+    data = await state.get_data()
+    services = await db.get_services()
+    service = next((s for s in services if s[0] == data['service_id']), None)
+    duration = service[3] if service else 30
     
     times = []
     current = start_time
     while current < end_time:
         times.append(current.strftime("%H:%M"))
-        current += timedelta(minutes=30)
+        current += timedelta(minutes=duration)
     
     booked_times = await db.get_booked_times(date)
     

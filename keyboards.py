@@ -27,23 +27,25 @@ def dates_keyboard(schedule):
     buttons = []
     today = datetime.now()
     
-    # Получаем доступные дни недели из расписания
     available_days = [slot[1] for slot in schedule]
+    shown_days = []  # уже показанные дни недели
     
-    for i in range(14):  # смотрим 2 недели вперёд
+    for i in range(14):
         date = today + timedelta(days=i)
-        if date.weekday() not in available_days:
-            continue  # пропускаем дни без расписания
+        day_of_week = date.weekday()
         
+        if day_of_week not in available_days:
+            continue
+        if day_of_week in shown_days:
+            continue  # этот день недели уже показан
+        
+        shown_days.append(day_of_week)
         day_str = date.strftime("%d.%m.%Y")
-        day_name = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"][date.weekday()]
+        day_name = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"][day_of_week]
         buttons.append([InlineKeyboardButton(
             text=f"{day_name} {day_str}",
             callback_data=f"date_{day_str}"
         )])
-        
-        if len(buttons) >= 7:  # максимум 7 дней
-            break
     
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="book")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -235,4 +237,4 @@ def days_of_week_keyboard(existing_days):
     if row:
         buttons.append(row)
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_schedule")])
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+    return InlineKeyboardMarkup(inline_keyboard=buttons)    
