@@ -116,9 +116,15 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     user = callback.from_user
     
+    # Берём username если есть, иначе full_name
+    if user.username:
+        user_name = f"@{user.username}"
+    else:
+        user_name = user.full_name
+    
     booking_id = await db.add_booking(
         user_id=user.id,
-        user_name=user.full_name,
+        user_name=user_name,
         service_id=data['service_id'],
         date=data['date'],
         time=data['time']
