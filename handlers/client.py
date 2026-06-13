@@ -231,8 +231,8 @@ async def back_date(callback: CallbackQuery, state: FSMContext):
 
 @router.callback_query(F.data == "info")
 async def info(callback: CallbackQuery):
-    welcome = await db.get_setting("welcome_text") or "Добро пожаловать!"
+    info_text = await db.get_setting("info_text") or "Информация не добавлена."
     await callback.message.edit_text(
-        f"ℹ️ Информация\n\n{welcome}",
+        f"ℹ️ Информация\n\n{info_text}",
         reply_markup=kb.main_menu()
     )

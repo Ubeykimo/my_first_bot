@@ -31,7 +31,8 @@ async def init_db():
                 service_id INTEGER NOT NULL,
                 date TEXT NOT NULL,
                 time TEXT NOT NULL,
-                status TEXT DEFAULT 'pending'
+                status TEXT DEFAULT 'pending',
+                reminded INTEGER DEFAULT 0
             )
         """)
         # Настройки

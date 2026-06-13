@@ -72,8 +72,9 @@ def confirm_keyboard():
 def admin_menu():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📋 Все записи", callback_data="admin_bookings")],
-        [InlineKeyboardButton(text="✂️ Управление услугами", callback_data="admin_services")],
-        [InlineKeyboardButton(text="🕐 Управление расписанием", callback_data="admin_schedule")],
+        [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton(text="✂️ Услуги", callback_data="admin_services")],
+        [InlineKeyboardButton(text="🕐 Расписание", callback_data="admin_schedule")],
         [InlineKeyboardButton(text="⚙️ Настройки", callback_data="admin_settings")]
     ])
     return keyboard
@@ -129,5 +130,13 @@ def admin_confirm_keyboard(booking_id, user_id):
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_{booking_id}_{user_id}")],
         [InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_{booking_id}_{user_id}")]
+    ])
+    return keyboard
+    
+def settings_keyboard():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="👋 Изменить приветствие", callback_data="edit_welcome")],
+        [InlineKeyboardButton(text="ℹ️ Изменить информацию", callback_data="edit_info")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_menu")]
     ])
     return keyboard

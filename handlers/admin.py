@@ -184,11 +184,14 @@ async def add_schedule_end_time(message: Message, state: FSMContext):
 
 # Настройки
 @router.callback_query(F.data == "admin_settings")
-async def admin_settings(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(AdminStates.editing_welcome)
+async def admin_settings(callback: CallbackQuery):
     welcome = await db.get_setting("welcome_text") or "Не задано"
+    info_text = await db.get_setting("info_text") or "Не задано"
     await callback.message.edit_text(
-        f"⚙️ Текущее приветствие:\n{welcome}\n\nВведите новый текст приветствия:"
+        f"⚙️ Настройки\n\n"
+        f"👋 Приветствие:\n{welcome}\n\n"
+        f"ℹ️ Информация:\n{info_text}",
+        reply_markup=kb.settings_keyboard()
     )
 
 # Сохранить приветствие
@@ -261,4 +264,77 @@ async def reject_booking_admin(callback: CallbackQuery):
         f"👤 Клиент: {booking[2]}\n"
         f"✂️ Услуга: {booking[3]}\n"
         f"📅 {booking[4]} в {booking[5]}"
+    )
+    
+class AdminStates(StatesGroup):
+    adding_service_name = State()
+    adding_service_price = State()
+    adding_service_duration = State()
+    adding_schedule_day = State()
+    adding_schedule_start = State()
+    adding_schedule_end = State()
+    editing_welcome = State()
+    editing_info = State()  # новое
+    
+@router.callback_query(F.data == "edit_welcome")
+async def edit_welcome(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminStates.editing_welcome)
+    await callback.message.edit_text("Введите новый текст приветствия:")
+
+@router.callback_query(F.data == "edit_info")
+async def edit_info(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(AdminStates.editing_info)
+    await callback.message.edit_text("Введите текст для раздела Информация:")
+
+@router.message(AdminStates.editing_info)
+async def save_info(message: Message, state: FSMContext):
+    await db.set_setting("info_text", message.text)
+    await state.clear()
+    await message.answer(
+        "✅ Информация обновлена!",
+        reply_markup=kb.settings_keyboard()
+    )
+    
+@router.callback_query(F.data == "admin_stats")
+async def admin_stats(callback: CallbackQuery):
+    async with __import__('aiosqlite').connect("bot.db") as db_conn:
+        # Всего записей
+        cursor = await db_conn.execute("SELECT COUNT(*) FROM bookings")
+        total = (await cursor.fetchone())[0]
+        
+        # Активных записей
+        cursor = await db_conn.execute(
+            "SELECT COUNT(*) FROM bookings WHERE status != 'cancelled'"
+        )
+        active = (await cursor.fetchone())[0]
+        
+        # Отменённых
+        cursor = await db_conn.execute(
+            "SELECT COUNT(*) FROM bookings WHERE status = 'cancelled'"
+        )
+        cancelled = (await cursor.fetchone())[0]
+        
+        # Подтверждённых
+        cursor = await db_conn.execute(
+            "SELECT COUNT(*) FROM bookings WHERE status = 'confirmed'"
+        )
+        confirmed = (await cursor.fetchone())[0]
+        
+        # Записей сегодня
+        from datetime import datetime
+        today = datetime.now().strftime("%d.%m.%Y")
+        cursor = await db_conn.execute(
+            "SELECT COUNT(*) FROM bookings WHERE date = ? AND status != 'cancelled'",
+            (today,)
+        )
+        today_count = (await cursor.fetchone())[0]
+    
+    await callback.message.edit_text(
+        f"📊 Статистика\n\n"
+        f"📋 Всего записей: {total}\n"
+        f"✅ Подтверждённых: {confirmed}\n"
+        f"⏳ Активных: {active}\n"
+        f"❌ Отменённых: {cancelled}\n"
+        f"📅 Сегодня: {today_count}",
+        reply_markup=kb.admin_menu()
     )
