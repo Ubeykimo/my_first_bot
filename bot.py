@@ -3,7 +3,8 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 
 # Сюда вставь свой токен
-TOKEN = "8967616858:AAGHgXsuVj6vf1biiQTRlhTZ_TZ8ApHf6mk"
+import os
+TOKEN = os.getenv("TOKEN")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
