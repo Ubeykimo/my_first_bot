@@ -111,7 +111,7 @@ async def choose_time(callback: CallbackQuery, state: FSMContext):
     )
 
 # Подтверждение записи
-@router.callback_query(F.data == "confirm_booking")
+@router.callback_query(F.data == "do_confirm_booking")
 async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     user = callback.from_user

@@ -63,7 +63,7 @@ def times_keyboard(times, booked_times):
 # Подтверждение записи
 def confirm_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm_booking")],
+        [InlineKeyboardButton(text="✅ Подтвердить", callback_data="do_confirm_booking")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="back_main")]
     ])
     return keyboard
