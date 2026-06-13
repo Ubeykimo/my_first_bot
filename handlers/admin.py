@@ -4,6 +4,10 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 import database as db
 import keyboards as kb
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from io import BytesIO
+from aiogram.types import BufferedInputFile
 
 router = Router()
 
@@ -201,7 +205,7 @@ async def save_welcome(message: Message, state: FSMContext):
     await state.clear()
     await message.answer(
         "✅ Приветствие обновлено!",
-        reply_markup=kb.admin_menu()
+        reply_markup=kb.settings_keyboard()
     )
     
 # Подтверждение записи администратором
@@ -338,3 +342,106 @@ async def admin_stats(callback: CallbackQuery):
         f"📅 Сегодня: {today_count}",
         reply_markup=kb.admin_menu()
     )
+    
+@router.callback_query(F.data == "admin_export")
+async def admin_export(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "📥 Выберите формат экспорта:",
+        reply_markup=kb.export_keyboard()
+    )
+
+@router.callback_query(F.data == "export_excel")
+async def export_excel(callback: CallbackQuery):
+    bookings = await db.get_bookings()
+    
+    if not bookings:
+        await callback.answer("Записей нет!", show_alert=True)
+        return
+    
+    # Создаём Excel файл
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Записи"
+    
+    # Заголовки
+    headers = ["№", "Клиент", "Услуга", "Дата", "Время", "Статус"]
+    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    
+    for col, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center")
+    
+    # Данные
+    status_map = {
+        "pending": "⏳ Ожидает",
+        "confirmed": "✅ Подтверждена",
+        "cancelled": "❌ Отменена"
+    }
+    
+    for row, booking in enumerate(bookings, 2):
+        ws.cell(row=row, column=1, value=booking[0])
+        ws.cell(row=row, column=2, value=booking[1])
+        ws.cell(row=row, column=3, value=booking[2])
+        ws.cell(row=row, column=4, value=booking[3])
+        ws.cell(row=row, column=5, value=booking[4])
+        ws.cell(row=row, column=6, value=status_map.get(booking[5], booking[5]))
+    
+    # Ширина колонок
+    ws.column_dimensions['A'].width = 5
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 25
+    ws.column_dimensions['D'].width = 12
+    ws.column_dimensions['E'].width = 10
+    ws.column_dimensions['F'].width = 18
+    
+    # Сохраняем в память
+    buffer = BytesIO()
+    wb.save(buffer)
+    buffer.seek(0)
+    
+    from datetime import datetime
+    filename = f"записи_{datetime.now().strftime('%d.%m.%Y')}.xlsx"
+    
+    await callback.message.answer_document(
+        BufferedInputFile(buffer.read(), filename=filename),
+        caption=f"📊 Экспорт записей\nВсего: {len(bookings)} записей"
+    )
+    await callback.answer()
+
+@router.callback_query(F.data == "export_txt")
+async def export_txt(callback: CallbackQuery):
+    bookings = await db.get_bookings()
+    
+    if not bookings:
+        await callback.answer("Записей нет!", show_alert=True)
+        return
+    
+    status_map = {
+        "pending": "⏳ Ожидает",
+        "confirmed": "✅ Подтверждена",
+        "cancelled": "❌ Отменена"
+    }
+    
+    from datetime import datetime
+    text = f"📋 Все записи — {datetime.now().strftime('%d.%m.%Y')}\n"
+    text += "=" * 40 + "\n\n"
+    
+    for booking in bookings:
+        text += (
+            f"👤 {booking[1]}\n"
+            f"✂️ {booking[2]}\n"
+            f"📅 {booking[3]} в {booking[4]}\n"
+            f"Статус: {status_map.get(booking[5], booking[5])}\n"
+            f"{'—' * 30}\n"
+        )
+    
+    filename = f"записи_{datetime.now().strftime('%d.%m.%Y')}.txt"
+    
+    await callback.message.answer_document(
+        BufferedInputFile(text.encode('utf-8'), filename=filename),
+        caption=f"📝 Экспорт записей\nВсего: {len(bookings)} записей"
+    )
+    await callback.answer()

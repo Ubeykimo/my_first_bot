@@ -73,6 +73,7 @@ def admin_menu():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📋 Все записи", callback_data="admin_bookings")],
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
+        [InlineKeyboardButton(text="📥 Экспорт записей", callback_data="admin_export")],
         [InlineKeyboardButton(text="✂️ Услуги", callback_data="admin_services")],
         [InlineKeyboardButton(text="🕐 Расписание", callback_data="admin_schedule")],
         [InlineKeyboardButton(text="⚙️ Настройки", callback_data="admin_settings")]
@@ -137,6 +138,14 @@ def settings_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="👋 Изменить приветствие", callback_data="edit_welcome")],
         [InlineKeyboardButton(text="ℹ️ Изменить информацию", callback_data="edit_info")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_menu")]
+    ])
+    return keyboard
+    
+def export_keyboard():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="📊 Экспорт в Excel", callback_data="export_excel")],
+        [InlineKeyboardButton(text="📝 Экспорт в текст", callback_data="export_txt")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_menu")]
     ])
     return keyboard
