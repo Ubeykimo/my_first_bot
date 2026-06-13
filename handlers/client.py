@@ -364,25 +364,3 @@ async def choose_date(callback: CallbackQuery, state: FSMContext):
         f"📅 Дата: {date}\nВыберите время:",
         reply_markup=kb.times_keyboard(times, booked_times)
     )
-    
-    # Берём минимальную длительность услуги для шага
-    services = await db.get_services()
-    if services:
-        min_duration = min(s[3] for s in services)
-    else:
-        min_duration = 30
-    
-    times = []
-    current = start_time
-    while current < end_time:
-        times.append(current.strftime("%H:%M"))
-        current += timedelta(minutes=min_duration)
-    
-    booked_times = await db.get_booked_times(date)
-    
-    await state.update_data(date=date, available_times=times)
-    await state.set_state(BookingStates.choosing_time)
-    await callback.message.edit_text(
-        f"📅 Дата: {date}\nВыберите время:",
-        reply_markup=kb.times_keyboard(times, booked_times)
-    )
