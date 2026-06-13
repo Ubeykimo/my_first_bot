@@ -102,3 +102,32 @@ def admin_schedule_keyboard(schedule):
     buttons.append([InlineKeyboardButton(text="➕ Добавить день", callback_data="add_schedule")])
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_menu")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)
+    
+# Кнопки для записей клиента
+def my_bookings_keyboard(bookings):
+    buttons = []
+    for booking in bookings:
+        # booking = (id, name, date, time, status)
+        status = "✅" if booking[4] == "confirmed" else "⏳"
+        buttons.append([InlineKeyboardButton(
+            text=f"{status} {booking[1]} — {booking[2]} {booking[3]}",
+            callback_data=f"booking_{booking[0]}"
+        )])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back_main")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+# Детали записи клиента
+def booking_detail_keyboard(booking_id):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="❌ Отменить запись", callback_data=f"cancel_{booking_id}")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="my_bookings")]
+    ])
+    return keyboard
+
+# Кнопки подтверждения для админа
+def admin_confirm_keyboard(booking_id, user_id):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Подтвердить", callback_data=f"confirm_{booking_id}_{user_id}")],
+        [InlineKeyboardButton(text="❌ Отклонить", callback_data=f"reject_{booking_id}_{user_id}")]
+    ])
+    return keyboard

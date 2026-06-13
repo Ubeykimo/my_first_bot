@@ -116,7 +116,7 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     data = await state.get_data()
     user = callback.from_user
     
-    await db.add_booking(
+    booking_id = await db.add_booking(
         user_id=user.id,
         user_name=user.full_name,
         service_id=data['service_id'],
@@ -127,23 +127,23 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await callback.message.edit_text(
         f"✅ Запись подтверждена!\n\n"
-        f"📋 Услуга: {data['service_name']}\n"
+        f"✂️ Услуга: {data['service_name']}\n"
         f"📅 Дата: {data['date']}\n"
         f"🕐 Время: {data['time']}\n\n"
         f"Ждём вас!",
         reply_markup=kb.main_menu()
     )
     
-    # Уведомление администратору
     admin_id = await db.get_setting("admin_id")
     if admin_id:
         await callback.bot.send_message(
             int(admin_id),
             f"🔔 Новая запись!\n\n"
             f"👤 Клиент: {user.full_name}\n"
-            f"📋 Услуга: {data['service_name']}\n"
+            f"✂️ Услуга: {data['service_name']}\n"
             f"📅 Дата: {data['date']}\n"
-            f"🕐 Время: {data['time']}"
+            f"🕐 Время: {data['time']}",
+            reply_markup=kb.admin_confirm_keyboard(booking_id, user.id)
         )
 
 # Назад в главное меню
@@ -158,29 +158,68 @@ async def back_main(callback: CallbackQuery, state: FSMContext):
 # Мои записи
 @router.callback_query(F.data == "my_bookings")
 async def my_bookings(callback: CallbackQuery):
-    async with __import__('aiosqlite').connect("bot.db") as db_conn:
-        cursor = await db_conn.execute("""
-            SELECT s.name, b.date, b.time, b.status
-            FROM bookings b
-            JOIN services s ON b.service_id = s.id
-            WHERE b.user_id = ?
-            ORDER BY b.date, b.time
-        """, (callback.from_user.id,))
-        bookings = await cursor.fetchall()
+    bookings = await db.get_user_bookings(callback.from_user.id)
     
     if not bookings:
         await callback.message.edit_text(
-            "У вас нет записей.",
+            "У вас нет активных записей.",
             reply_markup=kb.main_menu()
         )
         return
     
-    text = "📋 Ваши записи:\n\n"
-    for booking in bookings:
-        status = "✅" if booking[3] == "confirmed" else "⏳"
-        text += f"{status} {booking[0]}\n📅 {booking[1]} в {booking[2]}\n\n"
+    await callback.message.edit_text(
+        "📋 Ваши записи — выберите для деталей:",
+        reply_markup=kb.my_bookings_keyboard(bookings)
+    )
+
+# Детали записи
+@router.callback_query(F.data.startswith("booking_"))
+async def booking_detail(callback: CallbackQuery):
+    booking_id = int(callback.data.split("_")[1])
+    booking = await db.get_booking_by_id(booking_id)
     
-    await callback.message.edit_text(text, reply_markup=kb.main_menu())
+    if not booking or booking[1] != callback.from_user.id:
+        await callback.answer("Запись не найдена", show_alert=True)
+        return
+    
+    status = "✅ Подтверждена" if booking[6] == "confirmed" else "⏳ Ожидает подтверждения"
+    await callback.message.edit_text(
+        f"📋 Детали записи:\n\n"
+        f"✂️ Услуга: {booking[3]}\n"
+        f"📅 Дата: {booking[4]}\n"
+        f"🕐 Время: {booking[5]}\n"
+        f"Статус: {status}",
+        reply_markup=kb.booking_detail_keyboard(booking_id)
+    )
+
+# Отмена записи клиентом
+@router.callback_query(F.data.startswith("cancel_"))
+async def cancel_booking(callback: CallbackQuery):
+    booking_id = int(callback.data.split("_")[1])
+    booking = await db.get_booking_by_id(booking_id)
+    
+    if not booking or booking[1] != callback.from_user.id:
+        await callback.answer("Запись не найдена", show_alert=True)
+        return
+    
+    await db.cancel_booking(booking_id, callback.from_user.id)
+    
+    # Уведомление администратору
+    admin_id = await db.get_setting("admin_id")
+    if admin_id:
+        await callback.bot.send_message(
+            int(admin_id),
+            f"❌ Клиент отменил запись!\n\n"
+            f"👤 Клиент: {booking[2]}\n"
+            f"✂️ Услуга: {booking[3]}\n"
+            f"📅 Дата: {booking[4]}\n"
+            f"🕐 Время: {booking[5]}"
+        )
+    
+    await callback.message.edit_text(
+        "✅ Запись отменена.",
+        reply_markup=kb.main_menu()
+    )
 
 @router.callback_query(F.data == "back_date")
 async def back_date(callback: CallbackQuery, state: FSMContext):

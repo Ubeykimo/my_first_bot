@@ -200,3 +200,65 @@ async def save_welcome(message: Message, state: FSMContext):
         "✅ Приветствие обновлено!",
         reply_markup=kb.admin_menu()
     )
+    
+# Подтверждение записи администратором
+@router.callback_query(F.data.startswith("confirm_"))
+async def confirm_booking_admin(callback: CallbackQuery):
+    parts = callback.data.split("_")
+    booking_id = int(parts[1])
+    user_id = int(parts[2])
+    
+    booking = await db.get_booking_by_id(booking_id)
+    if not booking:
+        await callback.answer("Запись не найдена", show_alert=True)
+        return
+    
+    await db.confirm_booking(booking_id)
+    
+    # Уведомление клиенту
+    await callback.bot.send_message(
+        user_id,
+        f"✅ Ваша запись подтверждена!\n\n"
+        f"✂️ Услуга: {booking[3]}\n"
+        f"📅 Дата: {booking[4]}\n"
+        f"🕐 Время: {booking[5]}\n\n"
+        f"Ждём вас!"
+    )
+    
+    await callback.message.edit_text(
+        f"✅ Запись подтверждена!\n\n"
+        f"👤 Клиент: {booking[2]}\n"
+        f"✂️ Услуга: {booking[3]}\n"
+        f"📅 {booking[4]} в {booking[5]}"
+    )
+
+# Отклонение записи администратором
+@router.callback_query(F.data.startswith("reject_"))
+async def reject_booking_admin(callback: CallbackQuery):
+    parts = callback.data.split("_")
+    booking_id = int(parts[1])
+    user_id = int(parts[2])
+    
+    booking = await db.get_booking_by_id(booking_id)
+    if not booking:
+        await callback.answer("Запись не найдена", show_alert=True)
+        return
+    
+    await db.reject_booking(booking_id)
+    
+    # Уведомление клиенту
+    await callback.bot.send_message(
+        user_id,
+        f"❌ Ваша запись отклонена.\n\n"
+        f"✂️ Услуга: {booking[3]}\n"
+        f"📅 Дата: {booking[4]}\n"
+        f"🕐 Время: {booking[5]}\n\n"
+        f"Пожалуйста, выберите другое время."
+    )
+    
+    await callback.message.edit_text(
+        f"❌ Запись отклонена.\n\n"
+        f"👤 Клиент: {booking[2]}\n"
+        f"✂️ Услуга: {booking[3]}\n"
+        f"📅 {booking[4]} в {booking[5]}"
+    )

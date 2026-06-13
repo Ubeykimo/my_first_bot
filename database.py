@@ -103,11 +103,12 @@ async def get_booked_times(date):
 
 async def add_booking(user_id, user_name, service_id, date, time):
     async with aiosqlite.connect(DB_PATH) as db:
-        await db.execute(
+        cursor = await db.execute(
             "INSERT INTO bookings (user_id, user_name, service_id, date, time) VALUES (?, ?, ?, ?, ?)",
             (user_id, user_name, service_id, date, time)
         )
         await db.commit()
+        return cursor.lastrowid  # возвращаем id новой записи
 
 # ═══ НАСТРОЙКИ ═══
 async def get_setting(key):
@@ -125,3 +126,49 @@ async def set_setting(key, value):
             (key, value)
         )
         await db.commit()
+
+
+async def cancel_booking(booking_id, user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE bookings SET status = 'cancelled' WHERE id = ? AND user_id = ?",
+            (booking_id, user_id)
+        )
+        await db.commit()
+
+async def get_user_bookings(user_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("""
+            SELECT b.id, s.name, b.date, b.time, b.status
+            FROM bookings b
+            JOIN services s ON b.service_id = s.id
+            WHERE b.user_id = ? AND b.status != 'cancelled'
+            ORDER BY b.date, b.time
+        """, (user_id,))
+        return await cursor.fetchall()
+
+async def confirm_booking(booking_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE bookings SET status = 'confirmed' WHERE id = ?",
+            (booking_id,)
+        )
+        await db.commit()
+
+async def reject_booking(booking_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE bookings SET status = 'cancelled' WHERE id = ?",
+            (booking_id,)
+        )
+        await db.commit()
+
+async def get_booking_by_id(booking_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("""
+            SELECT b.id, b.user_id, b.user_name, s.name, b.date, b.time, b.status
+            FROM bookings b
+            JOIN services s ON b.service_id = s.id
+            WHERE b.id = ?
+        """, (booking_id,))
+        return await cursor.fetchone()
