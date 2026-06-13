@@ -16,10 +16,10 @@ class AdminStates(StatesGroup):
     adding_service_name = State()
     adding_service_price = State()
     adding_service_duration = State()
-    adding_schedule_day = State()
-    adding_schedule_start = State()
+    adding_schedule_start = State()  # убрали adding_schedule_day
     adding_schedule_end = State()
     editing_welcome = State()
+    editing_info = State()
 
 # Команда /admin
 @router.message(F.text == "/admin")
@@ -127,7 +127,6 @@ async def add_service_duration(message: Message, state: FSMContext):
         reply_markup=kb.admin_services_keyboard(services)
     )
 
-# Управление расписанием
 @router.callback_query(F.data == "admin_schedule")
 async def admin_schedule(callback: CallbackQuery):
     schedule = await db.get_schedule()
@@ -136,48 +135,102 @@ async def admin_schedule(callback: CallbackQuery):
         reply_markup=kb.admin_schedule_keyboard(schedule)
     )
 
-# Удалить расписание
 @router.callback_query(F.data.startswith("del_schedule_"))
 async def delete_schedule(callback: CallbackQuery):
     schedule_id = int(callback.data.split("_")[2])
     await db.delete_schedule(schedule_id)
     schedule = await db.get_schedule()
     await callback.message.edit_text(
-        "🕐 День удалён. Управление расписанием:",
+        "🕐 День удалён.",
         reply_markup=kb.admin_schedule_keyboard(schedule)
     )
 
-# Добавить расписание — шаг 1
 @router.callback_query(F.data == "add_schedule")
 async def add_schedule_start(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(AdminStates.adding_schedule_day)
+    schedule = await db.get_schedule()
+    existing_days = [slot[1] for slot in schedule]
+    
+    if len(existing_days) >= 7:
+        await callback.answer("Все дни уже добавлены!", show_alert=True)
+        return
+    
     await callback.message.edit_text(
-        "Введите день недели цифрой:\n"
-        "0 = Пн, 1 = Вт, 2 = Ср, 3 = Чт, 4 = Пт, 5 = Сб, 6 = Вс"
+        "Выберите день недели:",
+        reply_markup=kb.days_of_week_keyboard(existing_days)
     )
 
-# Добавить расписание — шаг 2
-@router.message(AdminStates.adding_schedule_day)
-async def add_schedule_day(message: Message, state: FSMContext):
-    if not message.text.isdigit() or int(message.text) > 6:
-        await message.answer("Введите цифру от 0 до 6!")
-        return
-    await state.update_data(schedule_day=int(message.text))
-    await state.set_state(AdminStates.adding_schedule_start)
-    await message.answer("Введите время начала работы (например 09:00):")
+@router.callback_query(F.data == "ignore")
+async def ignore(callback: CallbackQuery):
+    await callback.answer("Этот день уже добавлен!", show_alert=True)
 
-# Добавить расписание — шаг 3
+@router.callback_query(F.data.startswith("day_"))
+async def schedule_day_chosen(callback: CallbackQuery, state: FSMContext):
+    day = int(callback.data.split("_")[1])
+    await state.update_data(schedule_day=day)
+    await state.set_state(AdminStates.adding_schedule_start)
+    await callback.message.edit_text(
+        "Введите время начала работы:\n\n"
+        "⚠️ Формат: ЧЧ:ММ, минуты кратные 15\n"
+        "Например: 09:00, 09:15, 09:30, 09:45"
+    )
+
 @router.message(AdminStates.adding_schedule_start)
 async def add_schedule_start_time(message: Message, state: FSMContext):
+    # Проверяем формат
+    try:
+        from datetime import datetime
+        time = datetime.strptime(message.text, "%H:%M")
+        if time.minute % 15 != 0:
+            await message.answer(
+                "❌ Минуты должны быть кратны 15!\n"
+                "Например: 09:00, 09:15, 09:30, 09:45"
+            )
+            return
+    except ValueError:
+        await message.answer(
+            "❌ Неверный формат! Введите время в формате ЧЧ:ММ\n"
+            "Например: 09:00"
+        )
+        return
+    
     await state.update_data(schedule_start=message.text)
     await state.set_state(AdminStates.adding_schedule_end)
-    await message.answer("Введите время конца работы (например 18:00):")
+    await message.answer(
+        "Введите время конца работы:\n\n"
+        "⚠️ Формат: ЧЧ:ММ, минуты кратные 15\n"
+        "Например: 18:00, 18:15, 18:30, 18:45"
+    )
 
-# Добавить расписание — шаг 4
 @router.message(AdminStates.adding_schedule_end)
 async def add_schedule_end_time(message: Message, state: FSMContext):
+    # Проверяем формат
+    try:
+        from datetime import datetime
+        time = datetime.strptime(message.text, "%H:%M")
+        if time.minute % 15 != 0:
+            await message.answer(
+                "❌ Минуты должны быть кратны 15!\n"
+                "Например: 18:00, 18:15, 18:30, 18:45"
+            )
+            return
+    except ValueError:
+        await message.answer(
+            "❌ Неверный формат! Введите время в формате ЧЧ:ММ\n"
+            "Например: 18:00"
+        )
+        return
+    
     data = await state.get_data()
     days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+    
+    # Проверяем что конец после начала
+    from datetime import datetime
+    start = datetime.strptime(data['schedule_start'], "%H:%M")
+    end = datetime.strptime(message.text, "%H:%M")
+    if end <= start:
+        await message.answer("❌ Время конца должно быть позже времени начала!")
+        return
+    
     await db.add_schedule(data['schedule_day'], data['schedule_start'], message.text)
     await state.clear()
     schedule = await db.get_schedule()

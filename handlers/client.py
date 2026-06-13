@@ -144,11 +144,11 @@ async def confirm_booking(callback: CallbackQuery, state: FSMContext):
     
     await state.clear()
     await callback.message.edit_text(
-        f"✅ Запись подтверждена!\n\n"
+        f"⏳ Ожидает подтверждения\n\n"
         f"✂️ Услуга: {data['service_name']}\n"
         f"📅 Дата: {data['date']}\n"
         f"🕐 Время: {data['time']}\n\n"
-        f"Ждём вас!",
+        f"Вам напишет бот по статусу записи в ближайшее время!",
         reply_markup=kb.main_menu()
     )
     
@@ -325,4 +325,47 @@ async def skip_review(callback: CallbackQuery):
     await callback.message.edit_text(
         "Хорошо, спасибо за визит! 😊",
         reply_markup=kb.main_menu()
+    )
+    
+@router.callback_query(F.data.startswith("date_"))
+async def choose_date(callback: CallbackQuery, state: FSMContext):
+    date = callback.data.split("_")[1]
+    
+    from datetime import datetime, timedelta
+    date_obj = datetime.strptime(date, "%d.%m.%Y")
+    day_of_week = date_obj.weekday()
+    
+    schedule = await db.get_schedule()
+    day_schedule = next((s for s in schedule if s[1] == day_of_week), None)
+    
+    if not day_schedule:
+        await callback.answer(
+            "В этот день записи недоступны",
+            show_alert=True
+        )
+        return
+    
+    start_time = datetime.strptime(day_schedule[2], "%H:%M")
+    end_time = datetime.strptime(day_schedule[3], "%H:%M")
+    
+    # Берём минимальную длительность услуги для шага
+    services = await db.get_services()
+    if services:
+        min_duration = min(s[3] for s in services)
+    else:
+        min_duration = 30
+    
+    times = []
+    current = start_time
+    while current < end_time:
+        times.append(current.strftime("%H:%M"))
+        current += timedelta(minutes=min_duration)
+    
+    booked_times = await db.get_booked_times(date)
+    
+    await state.update_data(date=date, available_times=times)
+    await state.set_state(BookingStates.choosing_time)
+    await callback.message.edit_text(
+        f"📅 Дата: {date}\nВыберите время:",
+        reply_markup=kb.times_keyboard(times, booked_times)
     )

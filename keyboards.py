@@ -212,3 +212,27 @@ def reviews_keyboard(reviews):
         text += f"📅 {review[4]}\n"
         text += "—" * 20 + "\n"
     return text
+    
+def days_of_week_keyboard(existing_days):
+    days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+    buttons = []
+    row = []
+    for i, day in enumerate(days):
+        if i in existing_days:
+            # День уже добавлен — показываем с галочкой и блокируем
+            row.append(InlineKeyboardButton(
+                text=f"✅ {day}",
+                callback_data=f"ignore"
+            ))
+        else:
+            row.append(InlineKeyboardButton(
+                text=day,
+                callback_data=f"day_{i}"
+            ))
+        if len(row) == 4:
+            buttons.append(row)
+            row = []
+    if row:
+        buttons.append(row)
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_schedule")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
