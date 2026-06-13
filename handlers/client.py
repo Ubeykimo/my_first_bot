@@ -181,17 +181,7 @@ async def my_bookings(callback: CallbackQuery):
         text += f"{status} {booking[0]}\n📅 {booking[1]} в {booking[2]}\n\n"
     
     await callback.message.edit_text(text, reply_markup=kb.main_menu())
-    
-    @router.callback_query(F.data == "info")
-async def info(callback: CallbackQuery):
-    master_name = await db.get_setting("master_name") or "Мастер"
-    welcome = await db.get_setting("welcome_text") or "Добро пожаловать!"
-    await callback.message.edit_text(
-        f"ℹ️ Информация\n\n{welcome}",
-        reply_markup=kb.main_menu()
-    )
-    
-    
+
 @router.callback_query(F.data == "back_date")
 async def back_date(callback: CallbackQuery, state: FSMContext):
     services = await db.get_services()
