@@ -35,6 +35,19 @@ async def init_db():
                 reminded INTEGER DEFAULT 0
             )
         """)
+        # Отзывы
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS reviews (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                booking_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                user_name TEXT,
+                service_name TEXT,
+                rating INTEGER NOT NULL,
+                text TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
         # Настройки
         await db.execute("""
             CREATE TABLE IF NOT EXISTS settings (
@@ -172,4 +185,41 @@ async def get_booking_by_id(booking_id):
             JOIN services s ON b.service_id = s.id
             WHERE b.id = ?
         """, (booking_id,))
-        return await cursor.fetchone()
+        return await cursor.fetchone() 
+
+async def complete_booking(booking_id):
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "UPDATE bookings SET status = 'completed' WHERE id = ?",
+            (booking_id,)
+        )
+        await db.commit()
+
+async def add_review(booking_id, user_id, user_name, service_name, rating, text):
+    from datetime import datetime
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT INTO reviews (booking_id, user_id, user_name, service_name, rating, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (booking_id, user_id, user_name, service_name, rating, text, datetime.now().strftime("%d.%m.%Y %H:%M"))
+        )
+        await db.commit()
+
+async def get_reviews():
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("""
+            SELECT user_name, service_name, rating, text, created_at
+            FROM reviews
+            ORDER BY created_at DESC
+        """)
+        return await cursor.fetchall()
+
+async def get_completed_bookings():
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("""
+            SELECT b.id, b.user_id, b.user_name, s.name, b.date, b.time
+            FROM bookings b
+            JOIN services s ON b.service_id = s.id
+            WHERE b.status = 'confirmed'
+            ORDER BY b.date, b.time
+        """)
+        return await cursor.fetchall()

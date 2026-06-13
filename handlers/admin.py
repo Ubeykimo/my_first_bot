@@ -445,3 +445,56 @@ async def export_txt(callback: CallbackQuery):
         caption=f"📝 Экспорт записей\nВсего: {len(bookings)} записей"
     )
     await callback.answer()
+    
+# Завершить визит
+@router.callback_query(F.data == "admin_complete")
+async def admin_complete(callback: CallbackQuery):
+    bookings = await db.get_completed_bookings()
+    if not bookings:
+        await callback.message.edit_text(
+            "Нет подтверждённых записей.",
+            reply_markup=kb.admin_menu()
+        )
+        return
+    await callback.message.edit_text(
+        "Выберите запись для завершения:",
+        reply_markup=kb.completed_bookings_keyboard(bookings)
+    )
+
+@router.callback_query(F.data.startswith("complete_"))
+async def complete_visit(callback: CallbackQuery):
+    parts = callback.data.split("_")
+    booking_id = int(parts[1])
+    user_id = int(parts[2])
+    
+    booking = await db.get_booking_by_id(booking_id)
+    if not booking:
+        await callback.answer("Запись не найдена", show_alert=True)
+        return
+    
+    await db.complete_booking(booking_id)
+    
+    # Отправляем клиенту запрос отзыва
+    await callback.bot.send_message(
+        user_id,
+        f"Спасибо за визит! 😊\n\n"
+        f"Вы посетили: {booking[3]}\n"
+        f"Пожалуйста оцените услугу:",
+        reply_markup=kb.rating_keyboard(booking_id)
+    )
+    
+    await callback.message.edit_text(
+        f"✅ Визит завершён!\n"
+        f"Клиенту отправлен запрос отзыва.",
+        reply_markup=kb.admin_menu()
+    )
+
+# Отзывы
+@router.callback_query(F.data == "admin_reviews")
+async def admin_reviews(callback: CallbackQuery):
+    reviews = await db.get_reviews()
+    text = kb.reviews_keyboard(reviews)
+    await callback.message.edit_text(
+        text,
+        reply_markup=kb.admin_menu()
+    )

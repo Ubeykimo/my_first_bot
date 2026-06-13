@@ -14,6 +14,7 @@ class BookingStates(StatesGroup):
     choosing_date = State()
     choosing_time = State()
     confirming = State()
+    writing_review = State()  # новое
 
 # Команда /start
 @router.message(F.text == "/start")
@@ -240,5 +241,76 @@ async def info(callback: CallbackQuery):
     info_text = await db.get_setting("info_text") or "Информация не добавлена."
     await callback.message.edit_text(
         f"ℹ️ Информация\n\n{info_text}",
+        reply_markup=kb.main_menu()
+    )
+    
+# Оценка звёздочками
+@router.callback_query(F.data.startswith("rate_"))
+async def rate_service(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split("_")
+    booking_id = int(parts[1])
+    rating = int(parts[2])
+    
+    stars = "⭐" * rating
+    await state.update_data(review_booking_id=booking_id, review_rating=rating)
+    await state.set_state(BookingStates.writing_review)
+    
+    await callback.message.edit_text(
+        f"Вы поставили: {stars}\n\n"
+        f"Напишите отзыв или нажмите Пропустить:",
+        reply_markup=kb.skip_text_keyboard(booking_id, rating)
+    )
+
+# Текст отзыва
+@router.message(BookingStates.writing_review)
+async def write_review(message: Message, state: FSMContext):
+    data = await state.get_data()
+    booking = await db.get_booking_by_id(data['review_booking_id'])
+    
+    if booking:
+        await db.add_review(
+            booking_id=data['review_booking_id'],
+            user_id=message.from_user.id,
+            user_name=f"@{message.from_user.username}" if message.from_user.username else message.from_user.full_name,
+            service_name=booking[3],
+            rating=data['review_rating'],
+            text=message.text
+        )
+    
+    await state.clear()
+    await message.answer(
+        "Спасибо за отзыв! 🙏",
+        reply_markup=kb.main_menu()
+    )
+
+# Пропустить текст
+@router.callback_query(F.data.startswith("skip_text_"))
+async def skip_text(callback: CallbackQuery, state: FSMContext):
+    parts = callback.data.split("_")
+    booking_id = int(parts[2])
+    rating = int(parts[3])
+    
+    booking = await db.get_booking_by_id(booking_id)
+    if booking:
+        await db.add_review(
+            booking_id=booking_id,
+            user_id=callback.from_user.id,
+            user_name=f"@{callback.from_user.username}" if callback.from_user.username else callback.from_user.full_name,
+            service_name=booking[3],
+            rating=rating,
+            text=None
+        )
+    
+    await state.clear()
+    await callback.message.edit_text(
+        "Спасибо за оценку! 🙏",
+        reply_markup=kb.main_menu()
+    )
+
+# Пропустить отзыв полностью
+@router.callback_query(F.data.startswith("skip_review_"))
+async def skip_review(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "Хорошо, спасибо за визит! 😊",
         reply_markup=kb.main_menu()
     )

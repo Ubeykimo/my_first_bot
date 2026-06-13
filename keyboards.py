@@ -72,6 +72,8 @@ def confirm_keyboard():
 def admin_menu():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="📋 Все записи", callback_data="admin_bookings")],
+        [InlineKeyboardButton(text="✅ Завершить визит", callback_data="admin_complete")],
+        [InlineKeyboardButton(text="⭐ Отзывы", callback_data="admin_reviews")],
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
         [InlineKeyboardButton(text="📥 Экспорт записей", callback_data="admin_export")],
         [InlineKeyboardButton(text="✂️ Услуги", callback_data="admin_services")],
@@ -149,3 +151,53 @@ def export_keyboard():
         [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_menu")]
     ])
     return keyboard
+    
+# Кнопки завершённых записей для админа
+def completed_bookings_keyboard(bookings):
+    buttons = []
+    for booking in bookings:
+        buttons.append([InlineKeyboardButton(
+            text=f"✅ {booking[2]} — {booking[3]} {booking[4]} {booking[5]}",
+            callback_data=f"complete_{booking[0]}_{booking[1]}"
+        )])
+    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_menu")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+# Оценка звёздочками
+def rating_keyboard(booking_id):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="⭐", callback_data=f"rate_{booking_id}_1"),
+            InlineKeyboardButton(text="⭐⭐", callback_data=f"rate_{booking_id}_2"),
+            InlineKeyboardButton(text="⭐⭐⭐", callback_data=f"rate_{booking_id}_3"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐", callback_data=f"rate_{booking_id}_4"),
+            InlineKeyboardButton(text="⭐⭐⭐⭐⭐", callback_data=f"rate_{booking_id}_5"),
+        ],
+        [InlineKeyboardButton(text="❌ Пропустить", callback_data=f"skip_review_{booking_id}")]
+    ])
+    return keyboard
+
+# Пропустить текст отзыва
+def skip_text_keyboard(booking_id, rating):
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➡️ Пропустить", callback_data=f"skip_text_{booking_id}_{rating}")]
+    ])
+    return keyboard
+
+# Кнопка отзывов в админ меню
+def reviews_keyboard(reviews):
+    stars_map = {1: "⭐", 2: "⭐⭐", 3: "⭐⭐⭐", 4: "⭐⭐⭐⭐", 5: "⭐⭐⭐⭐⭐"}
+    text = "📝 Отзывы клиентов:\n\n"
+    if not reviews:
+        text = "Отзывов пока нет."
+    for review in reviews:
+        text += (
+            f"👤 {review[0]}\n"
+            f"✂️ {review[1]}\n"
+            f"{stars_map.get(review[2], '')}\n"
+        )
+        if review[3]:
+            text += f"💬 {review[3]}\n"
+        text += f"📅 {review[4]}\n"
+        text += "—" * 20 + "\n"
+    return text
