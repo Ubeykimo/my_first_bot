@@ -89,6 +89,7 @@ def admin_menu():
         [InlineKeyboardButton(text="⭐ Отзывы", callback_data="admin_reviews")],
         [InlineKeyboardButton(text="📊 Статистика", callback_data="admin_stats")],
         [InlineKeyboardButton(text="📥 Экспорт записей", callback_data="admin_export")],
+        [InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast")],
         [InlineKeyboardButton(text="✂️ Услуги", callback_data="admin_services")],
         [InlineKeyboardButton(text="🕐 Расписание", callback_data="admin_schedule")],
         [InlineKeyboardButton(text="⚙️ Настройки", callback_data="admin_settings")]
@@ -238,3 +239,10 @@ def days_of_week_keyboard(existing_days):
         buttons.append(row)
     buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="admin_schedule")])
     return InlineKeyboardMarkup(inline_keyboard=buttons)    
+    
+def broadcast_confirm_keyboard():
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="✅ Отправить всем", callback_data="broadcast_confirm")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="admin_menu")]
+    ])
+    return keyboard

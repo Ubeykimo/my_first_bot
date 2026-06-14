@@ -331,7 +331,8 @@ class AdminStates(StatesGroup):
     adding_schedule_start = State()
     adding_schedule_end = State()
     editing_welcome = State()
-    editing_info = State()  # новое
+    editing_info = State()
+    broadcasting = State()
     
 @router.callback_query(F.data == "edit_welcome")
 async def edit_welcome(callback: CallbackQuery, state: FSMContext):
@@ -549,5 +550,59 @@ async def admin_reviews(callback: CallbackQuery):
     text = kb.reviews_keyboard(reviews)
     await callback.message.edit_text(
         text,
+        reply_markup=kb.admin_menu()
+    )
+    
+@router.callback_query(F.data == "admin_broadcast")
+async def admin_broadcast(callback: CallbackQuery, state: FSMContext):
+    clients = await db.get_all_clients()
+    await state.set_state(AdminStates.broadcasting)
+    await callback.message.edit_text(
+        f"📢 Рассылка\n\n"
+        f"Клиентов в базе: {len(clients)}\n\n"
+        f"Введите текст сообщения для рассылки:"
+    )
+
+@router.message(AdminStates.broadcasting)
+async def broadcast_preview(message: Message, state: FSMContext):
+    await state.update_data(broadcast_text=message.text)
+    await message.answer(
+        f"📢 Предпросмотр сообщения:\n\n"
+        f"{message.text}\n\n"
+        f"Отправить всем клиентам?",
+        reply_markup=kb.broadcast_confirm_keyboard()
+    )
+
+@router.callback_query(F.data == "broadcast_confirm")
+async def broadcast_send(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    text = data.get('broadcast_text', '')
+    clients = await db.get_all_clients()
+    
+    await state.clear()
+    await callback.message.edit_text(
+        f"⏳ Отправляю сообщение {len(clients)} клиентам..."
+    )
+    
+    sent = 0
+    failed = 0
+    
+    for client in clients:
+        try:
+            await callback.bot.send_message(
+                client[0],
+                f"📢 Сообщение от мастера:\n\n{text}"
+            )
+            sent += 1
+        except Exception:
+            failed += 1
+        
+        # Небольшая задержка чтобы не получить бан от Telegram
+        await __import__('asyncio').sleep(0.05)
+    
+    await callback.message.edit_text(
+        f"✅ Рассылка завершена!\n\n"
+        f"📨 Отправлено: {sent}\n"
+        f"❌ Не доставлено: {failed}",
         reply_markup=kb.admin_menu()
     )

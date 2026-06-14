@@ -223,3 +223,12 @@ async def get_completed_bookings():
             ORDER BY b.date, b.time
         """)
         return await cursor.fetchall()
+        
+async def get_all_clients():
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("""
+            SELECT DISTINCT user_id, user_name
+            FROM bookings
+            WHERE status != 'cancelled'
+        """)
+        return await cursor.fetchall()
