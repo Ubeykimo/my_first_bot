@@ -6,7 +6,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 import database as db
 from handlers import client, admin
 
-TOKEN = os.getenv("TOKEN", "8967616858:AAGHgXsuVj6vf1biiQTRlhTZ_TZ8ApHf6mk")
+TOKEN = os.getenv("TOKEN")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
